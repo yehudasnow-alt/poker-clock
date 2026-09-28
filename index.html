@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>שעון טורניר פוקר</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1712; --felt:#132019; --felt-2:#1a2a20; --line:#2c3c30;
+  --gold:#c9a24a; --gold-dim:#8a7136; --cream:#f2ead9; --cream-dim:#a8b0a4;
+  --danger:#b5493a; --danger-bg:#3a2019;
+  --ff-serif:'Fraunces',Georgia,serif; --ff-mono:'Space Grotesk',system-ui,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;}
+html,body{height:100%; margin:0;}
+body{
+  background:radial-gradient(circle at 50% 0%, var(--felt-2), var(--bg) 70%);
+  color:var(--cream); font-family:var(--ff-mono);
+  min-height:100%; display:flex; flex-direction:column; overflow-x:hidden;
+}
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 22px; border-bottom:1px solid var(--line); gap:12px; flex-wrap:wrap;
+}
+.title-wrap{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+.title-wrap input{
+  background:none; border:none; color:var(--gold); font-family:var(--ff-serif);
+  font-size:22px; font-weight:600; outline:none; max-width:46vw;
+}
+.title-wrap input:focus{border-bottom:1px solid var(--gold-dim);}
+.level-tag{color:var(--cream-dim); font-size:14px; letter-spacing:.02em;}
+.elapsed{color:var(--cream-dim); font-size:14px; font-variant-numeric:tabular-nums;}
+.progress{height:4px; background:var(--line); position:relative; overflow:hidden;}
+.progress-fill{height:100%; background:var(--gold); width:100%; transition:width 1s linear, background .4s;}
+.progress-fill.urgent{background:var(--danger);}
+
+.stage{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 16px; gap:18px; text-align:center;}
+.break-banner{
+  font-family:var(--ff-serif); font-size:clamp(24px,4vw,40px); color:var(--gold);
+  letter-spacing:.03em;
+}
+.clock{
+  font-family:var(--ff-mono); font-weight:700; font-variant-numeric:tabular-nums;
+  font-size:clamp(84px,20vw,220px); line-height:1; color:var(--cream);
+}
+.clock.urgent{color:var(--danger); animation:pulse 1s ease-in-out infinite;}
+@media (prefers-reduced-motion: reduce){ .clock.urgent{animation:none;} }
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+
+.blinds-row{display:flex; gap:14px; flex-wrap:wrap; justify-content:center;}
+.blind-card{
+  background:var(--felt); border:1px solid var(--line); border-radius:10px;
+  padding:14px 26px; min-width:120px;
+}
+.blind-card .lbl{font-size:13px; color:var(--cream-dim); font-family:var(--ff-serif); margin-bottom:4px;}
+.blind-card .val{font-size:clamp(26px,4vw,40px); font-weight:600; color:var(--gold); font-variant-numeric:tabular-nums;}
+
+.next-up{color:var(--cream-dim); font-size:15px;}
+.next-up b{color:var(--cream);}
+
+.controls{
+  display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  border-top:1px solid var(--line);
+}
+button{
+  font-family:var(--ff-mono); font-size:14px; color:var(--cream); background:var(--felt);
+  border:1px solid var(--line); border-radius:8px; padding:10px 16px; cursor:pointer;
+}
+button:hover{border-color:var(--gold-dim);}
+button:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+button.primary{background:var(--gold); color:#221a08; border-color:var(--gold); font-weight:600;}
+button.primary:hover{background:#d9b45f;}
+button.ghost{background:none;}
+button.icon{padding:10px 12px;}
+
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(5,8,6,.72); display:none;
+  align-items:center; justify-content:center; z-index:10; padding:16px;
+}
+.modal-backdrop.open{display:flex;}
+.modal{
+  background:var(--felt); border:1px solid var(--line); border-radius:14px;
+  width:min(720px,100%); max-height:86vh; overflow:auto; padding:22px;
+}
+.modal h2{font-family:var(--ff-serif); color:var(--gold); margin:0 0 4px;}
+.modal p.sub{color:var(--cream-dim); font-size:13px; margin:0 0 16px;}
+.presets{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.generator{background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:18px;}
+.gen-title{margin:0 0 10px; font-size:14px; color:var(--cream);}
+.gen-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; margin-bottom:12px;}
+.gen-grid label{font-size:12px; color:var(--cream-dim); display:flex; flex-direction:column; gap:4px;}
+.gen-grid label.wide{grid-column:1/-1; flex-direction:row; align-items:center;}
+.gen-grid input[type=number]{
+  background:var(--felt); border:1px solid var(--line); border-radius:6px; color:var(--cream);
+  padding:7px 8px; font-family:var(--ff-mono); font-size:14px;
+}
+table{width:100%; border-collapse:collapse; font-size:14px;}
+th{color:var(--cream-dim); font-weight:500; text-align:right; padding:6px 4px; border-bottom:1px solid var(--line); font-size:12px;}
+td{padding:5px 4px; border-bottom:1px solid var(--line);}
+td input[type=number]{
+  width:100%; background:var(--bg); border:1px solid var(--line); border-radius:6px;
+  color:var(--cream); padding:6px; font-family:var(--ff-mono); font-size:14px; font-variant-numeric:tabular-nums;
+}
+td.chk{text-align:center;}
+tr.brk td{background:var(--danger-bg);}
+.row-actions{display:flex; justify-content:space-between; margin-top:14px; gap:8px; flex-wrap:wrap;}
+.hint{color:var(--cream-dim); font-size:12px; margin-top:10px; line-height:1.6;}
+::-webkit-scrollbar{width:10px;} ::-webkit-scrollbar-thumb{background:var(--line); border-radius:6px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="title-wrap">
+    <input id="titleInput" value="ערב פוקר" maxlength="40" aria-label="שם הטורניר">
+    <span class="level-tag" id="levelTag">רמה 1</span>
+  </div>
+  <div class="elapsed" id="elapsed">זמן כולל: 00:00:00</div>
+</div>
+<div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+
+<div class="stage">
+  <div class="break-banner" id="breakBanner" style="display:none">☕ הפסקה</div>
+  <div class="clock" id="clock">15:00</div>
+  <div class="blinds-row" id="blindsRow">
+    <div class="blind-card"><div class="lbl">Small Blind</div><div class="val" id="sbVal">25</div></div>
+    <div class="blind-card"><div class="lbl">Big Blind</div><div class="val" id="bbVal">50</div></div>
+    <div class="blind-card"><div class="lbl">Ante</div><div class="val" id="anteVal">0</div></div>
+  </div>
+  <div class="next-up" id="nextUp">הרמה הבאה: 50 / 100</div>
+</div>
+
+<div class="controls">
+  <button class="icon ghost" id="prevBtn" title="רמה קודמת">⏮ קודם</button>
+  <button class="icon ghost" id="minusBtn" title="פחות דקה">−1:00</button>
+  <button class="primary" id="playBtn">▶ התחל</button>
+  <button class="icon ghost" id="plusBtn" title="עוד דקה">+1:00</button>
+  <button class="icon ghost" id="nextBtn" title="רמה הבאה">הבא ⏭</button>
+  <button class="icon ghost" id="resetBtn">↺ איפוס רמה</button>
+  <button class="icon ghost" id="soundBtn">🔊 סאונד</button>
+  <button class="icon ghost" id="fsBtn">⛶ מסך מלא</button>
+  <button id="editBtn">⚙ עריכת מבנה עיוורים</button>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h2>מבנה עיוורים</h2>
+    <p class="sub">בחר תבנית מוכנה או ערוך ידנית. שינויים נשמרים אוטומטית בדפדפן הזה.</p>
+    <div class="generator">
+      <p class="gen-title">תבניות טורניר מקצועיות (בחר תבנית, ואז התאם את הזמנים):</p>
+      <div class="presets">
+        <button data-preset="turbo">⚡ טורבו</button>
+        <button data-preset="standard">♠ רגיל</button>
+        <button data-preset="deep">🏆 דיפ סטאק</button>
+      </div>
+      <div class="gen-grid">
+        <label>דקות לכל רמה<input id="pDur" type="number" min="1" step="1" value="10"></label>
+        <label>אורך הפסקה (דקות)<input id="pBreakDur" type="number" min="1" step="1" value="10"></label>
+        <label>הפסקה כל X רמות (0 = בלי)<input id="pBreakEvery" type="number" min="0" step="1" value="0"></label>
+        <label>אנטה החל מרמה (0 = בלי)<input id="pAnteFrom" type="number" min="0" step="1" value="7"></label>
+      </div>
+      <button id="presetApply">החל הגדרות על התבנית</button>
+    </div>
+
+    <div class="generator">
+      <p class="gen-title">או בנה מבנה לפי סכומי הכניסה שלכם:</p>
+      <div class="gen-grid">
+        <label>עיוור קטן התחלתי<input id="genSb" type="number" min="0" step="5" value="100"></label>
+        <label>עיוור גדול התחלתי<input id="genBb" type="number" min="0" step="5" value="200"></label>
+        <label>מכפיל גידול בכל רמה<input id="genMult" type="number" min="1" step="0.1" value="2"></label>
+        <label>דקות לכל רמה<input id="genDur" type="number" min="1" step="1" value="10"></label>
+        <label>מספר רמות<input id="genCount" type="number" min="1" step="1" value="12"></label>
+        <label>אנטה החל מרמה (0 = בלי)<input id="genAnteFrom" type="number" min="0" step="1" value="0"></label>
+        <label class="wide"><input id="genBreaks" type="checkbox" style="width:auto; margin-inline-end:8px;"> הפסקה של 10 דק׳ כל 4 רמות</label>
+      </div>
+      <button id="genBtn">🎲 צור מבנה מהערכים האלה</button>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Small</th><th>Big</th><th>Ante</th><th>דקות</th><th>הפסקה</th><th></th></tr></thead>
+      <tbody id="levelsBody"></tbody>
+    </table>
+    <div class="row-actions">
+      <button id="addLevelBtn">+ הוסף רמה</button>
+      <div style="display:flex; gap:8px;">
+        <button id="cancelModalBtn" class="ghost">ביטול</button>
+        <button id="saveModalBtn" class="primary">שמור והחל</button>
+      </div>
+    </div>
+    <p class="hint">טיפ: אפשר לסמן "הפסקה" בכל שורה כדי ליצור רמת מנוחה (העיוורים בה לא רלוונטיים). מקש רווח = השהיה/המשך בזמן שהשעון פועל.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var STORAGE_KEY = "poker_clock_state_v2";
+
+  function round25(n){ return Math.max(0, Math.round(n/25)*25); }
+
+  var LADDERS = {
+    turbo: [[25,50],[50,100],[100,200],[150,300],[200,400],[300,600],[400,800],[600,1200],[800,1600],[1000,2000],[1500,3000],[2000,4000],[3000,6000],[4000,8000],[6000,12000],[8000,16000],[10000,20000]],
+    standard: [[25,50],[50,100],[75,150],[100,200],[150,300],[200,400],[300,600],[400,800],[500,1000],[600,1200],[800,1600],[1000,2000],[1500,3000],[2000,4000],[2500,5000],[3000,6000],[4000,8000],[5000,10000],[6000,12000],[8000,16000]],
+    deep: [[25,50],[50,100],[75,150],[100,200],[125,250],[150,300],[200,400],[250,500],[300,600],[400,800],[500,1000],[600,1200],[800,1600],[1000,2000],[1200,2400],[1500,3000],[2000,4000],[2500,5000],[3000,6000],[4000,8000],[5000,10000],[6000,12000],[8000,16000],[10000,20000]]
+  };
+  var PRESET_DEFAULTS = {
+    turbo:    {dur:8,  breakEvery:6, breakDur:10, anteFrom:5},
+    standard: {dur:15, breakEvery:4, breakDur:15, anteFrom:7},
+    deep:     {dur:25, breakEvery:4, breakDur:20, anteFrom:8}
+  };
+
+  function buildPreset(kind, o){
+    var ladder = LADDERS[kind] || LADDERS.standard;
+    var levels = [];
+    for(var i=0;i<ladder.length;i++){
+      var sb = ladder[i][0], bb = ladder[i][1];
+      var ante = (o.anteFrom>0 && (i+1)>=o.anteFrom) ? roundNice(bb/8) : 0;
+      levels.push({sb:sb, bb:bb, ante:ante, duration:o.dur, isBreak:false});
+      if(o.breakEvery>0 && (i+1)%o.breakEvery===0 && i!==ladder.length-1){
+        levels.push({sb:0, bb:0, ante:0, duration:o.breakDur, isBreak:true});
+      }
+    }
+    return levels;
+  }
+
+  function roundNice(n){
+    if(n<=0) return 0;
+    var step = n<100 ? 5 : (n<1000 ? 25 : (n<10000 ? 50 : 100));
+    return Math.round(n/step)*step;
+  }
+
+  function buildCustom(params){
+    var levels = [];
+    var curSb = params.sb, curBb = params.bb;
+    for(var i=1;i<=params.count;i++){
+      var ante = (params.anteFrom>0 && i>=params.anteFrom) ? roundNice(curBb/8) : 0;
+      levels.push({sb:roundNice(curSb), bb:roundNice(curBb), ante:ante, duration:params.dur, isBreak:false});
+      if(params.withBreaks && i%4===0 && i!==params.count){
+        levels.push({sb:0, bb:0, ante:0, duration:10, isBreak:true});
+      }
+      curSb *= params.mult; curBb *= params.mult;
+    }
+    return levels;
+  }
+
+  function defaultState(){
+    return {
+      title:"ערב פוקר",
+      levels: buildPreset("standard",{dur:10,breakEvery:0,breakDur:10,anteFrom:7}),
+      currentLevelIndex: 0,
+      timeLeftSec: 10*60,
+      elapsedSec: 0,
+      running:false,
+      soundOn:true
+    };
+  }
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return defaultState();
+      var s = JSON.parse(raw);
+      if(!s || !Array.isArray(s.levels) || !s.levels.length) return defaultState();
+      s.running = false; // never resume auto-playing on reload
+      return s;
+    }catch(e){ return defaultState(); }
+  }
+
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  var state = loadState();
+  var tickHandle = null;
+
+  var el = {
+    title: document.getElementById("titleInput"),
+    levelTag: document.getElementById("levelTag"),
+    elapsed: document.getElementById("elapsed"),
+    progressFill: document.getElementById("progressFill"),
+    breakBanner: document.getElementById("breakBanner"),
+    clock: document.getElementById("clock"),
+    blindsRow: document.getElementById("blindsRow"),
+    sbVal: document.getElementById("sbVal"),
+    bbVal: document.getElementById("bbVal"),
+    anteVal: document.getElementById("anteVal"),
+    nextUp: document.getElementById("nextUp"),
+    playBtn: document.getElementById("playBtn"),
+    soundBtn: document.getElementById("soundBtn"),
+    modalBackdrop: document.getElementById("modalBackdrop"),
+    levelsBody: document.getElementById("levelsBody")
+  };
+
+  function fmt(sec){
+    sec = Math.max(0, Math.round(sec));
+    var h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+    function p(n){return n<10?"0"+n:""+n;}
+    return h>0 ? (p(h)+":"+p(m)+":"+p(s)) : (p(m)+":"+p(s));
+  }
+
+  function currentLevel(){ return state.levels[state.currentLevelIndex]; }
+
+  function render(){
+    el.title.value = state.title;
+    var lvl = currentLevel();
+    var levelNum = state.currentLevelIndex+1;
+    el.levelTag.textContent = "רמה " + levelNum + " מתוך " + state.levels.length;
+    el.elapsed.textContent = "זמן כולל: " + fmt(state.elapsedSec);
+    el.clock.textContent = fmt(state.timeLeftSec);
+
+    var frac = lvl.duration>0 ? state.timeLeftSec/(lvl.duration*60) : 0;
+    el.progressFill.style.width = Math.max(0,Math.min(1,frac))*100 + "%";
+    var urgent = state.timeLeftSec<=30 && state.timeLeftSec>0;
+    el.progressFill.classList.toggle("urgent", urgent);
+    el.clock.classList.toggle("urgent", urgent);
+
+    if(lvl.isBreak){
+      el.breakBanner.style.display = "block";
+      el.blindsRow.style.display = "none";
+    } else {
+      el.breakBanner.style.display = "none";
+      el.blindsRow.style.display = "flex";
+      el.sbVal.textContent = lvl.sb.toLocaleString();
+      el.bbVal.textContent = lvl.bb.toLocaleString();
+      el.anteVal.textContent = lvl.ante.toLocaleString();
+    }
+
+    var next = state.levels[state.currentLevelIndex+1];
+    if(next){
+      el.nextUp.textContent = next.isBreak
+        ? "הבא: הפסקה של " + next.duration + " דק׳"
+        : "הרמה הבאה: " + next.sb.toLocaleString() + " / " + next.bb.toLocaleString() + (next.ante? " (Ante " + next.ante.toLocaleString() + ")" : "");
+    } else {
+      el.nextUp.textContent = "זו הרמה האחרונה במבנה";
+    }
+
+    el.playBtn.textContent = state.running ? "⏸ השהה" : "▶ המשך";
+    el.soundBtn.textContent = state.soundOn ? "🔊 סאונד" : "🔇 סאונד";
+    document.title = fmt(state.timeLeftSec) + " · " + state.title;
+  }
+
+  // ---- audio ----
+  var actx = null;
+  function beep(freq, dur, delay){
+    if(!state.soundOn) return;
+    try{
+      if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      var t = actx.currentTime + (delay||0);
+      var osc = actx.createOscillator();
+      var gain = actx.createGain();
+      osc.type = "sine"; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.35, t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      osc.connect(gain); gain.connect(actx.destination);
+      osc.start(t); osc.stop(t+dur+0.02);
+    }catch(e){}
+  }
+  function warningBeep(){ beep(660,0.18,0); }
+  function levelChangeFanfare(){ beep(440,0.16,0); beep(554,0.16,0.18); beep(660,0.28,0.36); }
+
+  // ---- timer ----
+  var warned60=false, warned10=false;
+
+  function tick(){
+    if(!state.running) return;
+    state.timeLeftSec -= 1;
+    state.elapsedSec += 1;
+    if(state.timeLeftSec===60 && !warned60){ warningBeep(); warned60=true; }
+    if(state.timeLeftSec===10 && !warned10){ warningBeep(); warned10=true; }
+    if(state.timeLeftSec<=0){
+      advanceLevel(true);
+    }
+    render();
+    saveState();
+  }
+
+  function startTimer(){
+    if(tickHandle) return;
+    state.running = true;
+    tickHandle = setInterval(tick, 1000);
+    render(); saveState();
+  }
+  function pauseTimer(){
+    state.running = false;
+    if(tickHandle){ clearInterval(tickHandle); tickHandle = null; }
+    render(); saveState();
+  }
+  function toggleTimer(){ state.running ? pauseTimer() : startTimer(); }
+
+  function goToLevel(idx, playSound){
+    if(idx<0) idx=0;
+    if(idx>state.levels.length-1) idx=state.levels.length-1;
+    state.currentLevelIndex = idx;
+    state.timeLeftSec = state.levels[idx].duration*60;
+    warned60=false; warned10=false;
+    if(playSound) levelChangeFanfare();
+    render(); saveState();
+  }
+
+  function advanceLevel(auto){
+    if(state.currentLevelIndex >= state.levels.length-1){
+      pauseTimer();
+      state.timeLeftSec = 0;
+      render(); saveState();
+      return;
+    }
+    goToLevel(state.currentLevelIndex+1, true);
+  }
+
+  // ---- controls ----
+  document.getElementById("playBtn").addEventListener("click", toggleTimer);
+  document.getElementById("nextBtn").addEventListener("click", function(){ goToLevel(state.currentLevelIndex+1, true); });
+  document.getElementById("prevBtn").addEventListener("click", function(){ goToLevel(state.currentLevelIndex-1, false); });
+  document.getElementById("resetBtn").addEventListener("click", function(){ goToLevel(state.currentLevelIndex, false); });
+  document.getElementById("plusBtn").addEventListener("click", function(){ state.timeLeftSec += 60; render(); saveState(); });
+  document.getElementById("minusBtn").addEventListener("click", function(){ state.timeLeftSec = Math.max(0,state.timeLeftSec-60); render(); saveState(); });
+  document.getElementById("soundBtn").addEventListener("click", function(){ state.soundOn = !state.soundOn; render(); saveState(); });
+  document.getElementById("fsBtn").addEventListener("click", function(){
+    if(!document.fullscreenElement){ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+    else { document.exitFullscreen && document.exitFullscreen(); }
+  });
+  el.title.addEventListener("input", function(){ state.title = el.title.value; render(); saveState(); });
+
+  document.addEventListener("keydown", function(e){
+    if(e.target.tagName==="INPUT") return;
+    if(e.code==="Space"){ e.preventDefault(); toggleTimer(); }
+    if(e.code==="ArrowLeft"){ goToLevel(state.currentLevelIndex+1, true); }
+    if(e.code==="ArrowRight"){ goToLevel(state.currentLevelIndex-1, false); }
+  });
+
+  // ---- structure editor modal ----
+  function openModal(){
+    renderLevelsTable();
+    el.modalBackdrop.classList.add("open");
+  }
+  function closeModal(){ el.modalBackdrop.classList.remove("open"); }
+
+  var editLevels = [];
+
+  function renderLevelsTable(){
+    editLevels = JSON.parse(JSON.stringify(state.levels));
+    drawTable();
+  }
+
+  function drawTable(){
+    el.levelsBody.innerHTML = "";
+    editLevels.forEach(function(lvl, i){
+      var tr = document.createElement("tr");
+      if(lvl.isBreak) tr.className="brk";
+      tr.innerHTML =
+        "<td>"+(i+1)+"</td>"+
+        "<td><input type='number' min='0' step='25' data-f='sb' value='"+lvl.sb+"' "+(lvl.isBreak?"disabled":"")+"></td>"+
+        "<td><input type='number' min='0' step='25' data-f='bb' value='"+lvl.bb+"' "+(lvl.isBreak?"disabled":"")+"></td>"+
+        "<td><input type='number' min='0' step='25' data-f='ante' value='"+lvl.ante+"' "+(lvl.isBreak?"disabled":"")+"></td>"+
+        "<td><input type='number' min='1' step='1' data-f='duration' value='"+lvl.duration+"'></td>"+
+        "<td class='chk'><input type='checkbox' data-f='isBreak' "+(lvl.isBreak?"checked":"")+"></td>"+
+        "<td><button data-del='"+i+"' class='ghost icon' title='מחק'>✕</button></td>";
+      el.levelsBody.appendChild(tr);
+
+      tr.querySelectorAll("input[data-f]").forEach(function(inp){
+        inp.addEventListener("change", function(){
+          var f = inp.getAttribute("data-f");
+          if(f==="isBreak"){ editLevels[i].isBreak = inp.checked; drawTable(); return; }
+          var v = parseInt(inp.value,10); if(isNaN(v)||v<0) v=0;
+          editLevels[i][f] = v;
+        });
+      });
+      tr.querySelector("[data-del]").addEventListener("click", function(){
+        editLevels.splice(i,1); drawTable();
+      });
+    });
+  }
+
+  document.getElementById("editBtn").addEventListener("click", openModal);
+  document.getElementById("cancelModalBtn").addEventListener("click", closeModal);
+  document.getElementById("modalBackdrop").addEventListener("click", function(e){ if(e.target===el.modalBackdrop) closeModal(); });
+  document.getElementById("addLevelBtn").addEventListener("click", function(){
+    var last = editLevels[editLevels.length-1] || {sb:100,bb:200,ante:0,duration:15};
+    editLevels.push({sb:last.sb*2||100, bb:last.bb*2||200, ante:last.ante, duration:last.duration, isBreak:false});
+    drawTable();
+  });
+  var currentPreset = "standard";
+  function readPresetOpts(){
+    function n(id,def){ var v=parseInt(document.getElementById(id).value,10); return isNaN(v)?def:v; }
+    return {dur:Math.max(1,n("pDur",10)), breakDur:Math.max(1,n("pBreakDur",10)), breakEvery:Math.max(0,n("pBreakEvery",0)), anteFrom:Math.max(0,n("pAnteFrom",0))};
+  }
+  function markPreset(){
+    document.querySelectorAll("[data-preset]").forEach(function(b){
+      b.classList.toggle("primary", b.getAttribute("data-preset")===currentPreset);
+    });
+  }
+  document.querySelectorAll("[data-preset]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      currentPreset = btn.getAttribute("data-preset");
+      var d = PRESET_DEFAULTS[currentPreset];
+      document.getElementById("pDur").value = d.dur;
+      document.getElementById("pBreakDur").value = d.breakDur;
+      document.getElementById("pBreakEvery").value = d.breakEvery;
+      document.getElementById("pAnteFrom").value = d.anteFrom;
+      editLevels = buildPreset(currentPreset, d);
+      markPreset(); drawTable();
+    });
+  });
+  document.getElementById("presetApply").addEventListener("click", function(){
+    editLevels = buildPreset(currentPreset, readPresetOpts());
+    markPreset(); drawTable();
+  });
+
+  document.getElementById("genBtn").addEventListener("click", function(){
+    var sb = parseFloat(document.getElementById("genSb").value) || 0;
+    var bb = parseFloat(document.getElementById("genBb").value) || (sb*2);
+    var mult = parseFloat(document.getElementById("genMult").value) || 2;
+    var dur = parseInt(document.getElementById("genDur").value,10) || 10;
+    var count = parseInt(document.getElementById("genCount").value,10) || 10;
+    var anteFrom = parseInt(document.getElementById("genAnteFrom").value,10) || 0;
+    var withBreaks = document.getElementById("genBreaks").checked;
+    editLevels = buildCustom({sb:sb, bb:bb, mult:mult, dur:dur, count:count, anteFrom:anteFrom, withBreaks:withBreaks});
+    drawTable();
+  });
+
+  document.getElementById("saveModalBtn").addEventListener("click", function(){
+    if(!editLevels.length){ return; }
+    pauseTimer();
+    state.levels = editLevels;
+    goToLevel(0, false);
+    closeModal();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
